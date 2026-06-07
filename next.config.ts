@@ -1,7 +1,26 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
+import path from 'path'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
 
-export default nextConfig;
+  images: {
+    remotePatterns: [],
+  },
+  async headers() {
+    return [
+      {
+        source: '/player/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+      {
+        source: '/live',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+    ]
+  },
+}
+
+export default nextConfig
