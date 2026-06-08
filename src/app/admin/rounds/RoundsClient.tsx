@@ -13,368 +13,322 @@ interface Player {
   assigned_qr: string | null
 }
 
+interface RoundParticipant extends Player {
+  result: 'survived' | 'eliminated' | null
+}
+
 interface Group {
   num: number
   members: Player[]
-  type: 'male' | 'female' | 'other' | 'mixed'
+  type: 'male' | 'female' | 'mixed' | 'other'
 }
 
-// ─── Group generation algorithm ───────────────────────────────────────────────
+// ─── Group algorithm ──────────────────────────────────────────────────────────
 function makeGroups(players: Player[], size: number): Group[] {
-  const males   = players.filter(p => p.gender === 'M').sort((a, b) => a.roll_no.localeCompare(b.roll_no))
-  const females = players.filter(p => p.gender === 'F').sort((a, b) => a.roll_no.localeCompare(b.roll_no))
-  const others  = players.filter(p => p.gender !== 'M' && p.gender !== 'F').sort((a, b) => a.roll_no.localeCompare(b.roll_no))
-
+  const sort = (arr: Player[]) => [...arr].sort((a, b) => a.roll_no.localeCompare(b.roll_no))
+  const males   = sort(players.filter(p => p.gender === 'M'))
+  const females = sort(players.filter(p => p.gender === 'F'))
+  const others  = sort(players.filter(p => p.gender !== 'M' && p.gender !== 'F'))
   const groups: Group[] = []
   let num = 1
 
-  // Full male groups
-  for (let i = 0; i + size <= males.length; i += size) {
-    groups.push({ num: num++, members: males.slice(i, i + size), type: 'male' })
+  const chunkGender = (arr: Player[], type: Group['type']) => {
+    for (let i = 0; i + size <= arr.length; i += size)
+      groups.push({ num: num++, members: arr.slice(i, i + size), type })
+    return arr.slice(Math.floor(arr.length / size) * size)
   }
-  const leftoverMales = males.slice(Math.floor(males.length / size) * size)
 
-  // Full female groups
-  for (let i = 0; i + size <= females.length; i += size) {
-    groups.push({ num: num++, members: females.slice(i, i + size), type: 'female' })
-  }
-  const leftoverFemales = females.slice(Math.floor(females.length / size) * size)
+  const leftM = chunkGender(males, 'male')
+  const leftF = chunkGender(females, 'female')
+  const remaining = [...leftM, ...leftF, ...others]
 
-  // Remaining players (leftover M + leftover F + Others) → mixed groups
-  const remaining = [...leftoverMales, ...leftoverFemales, ...others]
   for (let i = 0; i < remaining.length; i += size) {
     const chunk = remaining.slice(i, i + size)
     const hasM = chunk.some(p => p.gender === 'M')
     const hasF = chunk.some(p => p.gender === 'F')
-    const type = hasM && hasF ? 'mixed' : hasM ? 'male' : hasF ? 'female' : 'other'
-    groups.push({ num: num++, members: chunk, type })
+    groups.push({ num: num++, members: chunk, type: hasM && hasF ? 'mixed' : hasM ? 'male' : hasF ? 'female' : 'other' })
   }
-
   return groups
 }
 
-// ─── Group card ───────────────────────────────────────────────────────────────
-const GROUP_COLORS: Record<string, { bg: string; border: string; badge: string; label: string }> = {
-  male:   { bg: 'rgba(99,179,237,0.06)',  border: 'rgba(99,179,237,0.25)',  badge: 'rgba(99,179,237,0.15)',  label: '#63b3ed' },
-  female: { bg: 'rgba(255,45,120,0.06)',  border: 'rgba(255,45,120,0.2)',   badge: 'rgba(255,45,120,0.12)',  label: 'var(--pink)' },
-  mixed:  { bg: 'rgba(154,73,238,0.06)', border: 'rgba(154,73,238,0.2)',   badge: 'rgba(154,73,238,0.12)', label: '#9a49ee' },
-  other:  { bg: 'rgba(152,152,184,0.06)', border: 'rgba(152,152,184,0.2)', badge: 'rgba(152,152,184,0.12)', label: 'var(--text-muted)' },
+// ─── Colors ───────────────────────────────────────────────────────────────────
+const GC: Record<string, { bg: string; border: string; badge: string; label: string }> = {
+  male:   { bg: 'rgba(99,179,237,0.07)',  border: 'rgba(99,179,237,0.25)',  badge: 'rgba(99,179,237,0.15)',  label: '#63b3ed' },
+  female: { bg: 'rgba(255,45,120,0.07)',  border: 'rgba(255,45,120,0.2)',   badge: 'rgba(255,45,120,0.12)',  label: 'var(--pink)' },
+  mixed:  { bg: 'rgba(154,73,238,0.07)', border: 'rgba(154,73,238,0.2)',   badge: 'rgba(154,73,238,0.12)', label: '#9a49ee' },
+  other:  { bg: 'rgba(152,152,184,0.07)', border: 'rgba(152,152,184,0.2)', badge: 'rgba(152,152,184,0.12)', label: 'var(--text-muted)' },
 }
 
+// ─── Group card ───────────────────────────────────────────────────────────────
 function GroupCard({ group }: { group: Group }) {
-  const c = GROUP_COLORS[group.type]
-  const typeLabel = group.type === 'male' ? '♂ Male' : group.type === 'female' ? '♀ Female' : group.type === 'mixed' ? '⚥ Mixed' : '— Other'
+  const c = GC[group.type]
+  const label = { male: '♂ Male', female: '♀ Female', mixed: '⚥ Mixed', other: '— Other' }[group.type]
   return (
-    <div style={{
-      border: `1px solid ${c.border}`,
-      borderRadius: 'var(--radius-sm)',
-      background: c.bg,
-      padding: '14px 16px',
-      pageBreakInside: 'avoid',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ fontWeight: 800, fontSize: 15 }}>Group {group.num}</div>
-        <span style={{
-          fontSize: 11, fontWeight: 700, padding: '2px 10px',
-          borderRadius: 100, background: c.badge, color: c.label,
-        }}>
-          {typeLabel}
-        </span>
+    <div style={{ border: `1px solid ${c.border}`, borderRadius: 'var(--radius-sm)', background: c.bg, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontWeight: 800, fontSize: 14 }}>Group {group.num}</div>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: c.badge, color: c.label }}>{label}</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {group.members.map((m, i) => (
-          <div key={m.participant_id} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '6px 10px', borderRadius: 6,
-            background: 'rgba(0,0,0,0.2)',
-          }}>
-            <div style={{
-              width: 22, height: 22, borderRadius: '50%',
-              background: 'var(--bg-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0,
-            }}>
-              {i + 1}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {m.name}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{m.roll_no}</div>
-            </div>
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 6px',
-              borderRadius: 100, background: c.badge, color: c.label, flexShrink: 0,
-            }}>
-              {m.gender}
-            </span>
+      {group.members.map((m, i) => (
+        <div key={m.participant_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, background: 'rgba(0,0,0,0.15)', marginBottom: 4 }}>
+          <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>{i + 1}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{m.roll_no}</div>
           </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, textAlign: 'right' }}>
-        {group.members.length} member{group.members.length !== 1 ? 's' : ''}
-      </div>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 100, background: c.badge, color: c.label, flexShrink: 0 }}>{m.gender}</span>
+        </div>
+      ))}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>{group.members.length} members</div>
     </div>
   )
 }
 
-// ─── Group Maker panel ────────────────────────────────────────────────────────
-function GroupMaker() {
+// ─── Per-round group maker ────────────────────────────────────────────────────
+function RoundGroupMaker({ roundId, roundName }: { roundId: string; roundName: string }) {
   const supabase = createClient()
   const [groupSize, setGroupSize] = useState(4)
   const [groups, setGroups] = useState<Group[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(false)
-  const [generated, setGenerated] = useState(false)
+  const [done, setDone] = useState(false)
 
   const generate = async () => {
-    if (groupSize < 2) { toast.error('Group size must be at least 2'); return }
-    setLoading(true)
-    setGenerated(false)
-
+    if (groupSize < 2) { toast.error('Group size must be ≥ 2'); return }
+    setLoading(true); setDone(false)
     const { data, error } = await supabase
       .from('participants')
       .select('participant_id, name, roll_no, gender, assigned_qr')
       .eq('current_status', 'active')
       .order('roll_no')
-
-    if (error) { toast.error('Failed to fetch players'); setLoading(false); return }
-    if (!data || data.length === 0) { toast.error('No active players found'); setLoading(false); return }
-
+    if (error || !data?.length) { toast.error('No active players'); setLoading(false); return }
     setPlayers(data)
-    const g = makeGroups(data, groupSize)
-    setGroups(g)
-    setGenerated(true)
-    setLoading(false)
-    toast.success(`${g.length} groups created from ${data.length} active players`)
+    setGroups(makeGroups(data, groupSize))
+    setDone(true); setLoading(false)
+    toast.success(`${makeGroups(data, groupSize).length} groups created`)
   }
 
-  const printGroups = () => {
-    const maleGroups   = groups.filter(g => g.type === 'male')
-    const femaleGroups = groups.filter(g => g.type === 'female')
-    const mixedGroups  = groups.filter(g => g.type === 'mixed' || g.type === 'other')
+  const printGroups = (gs: Group[], ps: Player[]) => {
+    const males = ps.filter(p => p.gender === 'M').length
+    const females = ps.filter(p => p.gender === 'F').length
 
-    const renderGroup = (g: Group) => `
-      <div class="group-card">
-        <div class="group-header">
-          <span class="group-num">Group ${g.num}</span>
-          <span class="group-badge ${g.type}">${g.type === 'male' ? '♂ Male' : g.type === 'female' ? '♀ Female' : g.type === 'mixed' ? '⚥ Mixed' : '— Other'}</span>
-        </div>
-        ${g.members.map((m, i) => `
-          <div class="member-row">
-            <span class="member-idx">${i + 1}</span>
-            <span class="member-name">${m.name}</span>
-            <span class="member-roll">${m.roll_no}</span>
-            <span class="member-gender">${m.gender}</span>
-          </div>
-        `).join('')}
-      </div>`
+    const renderG = (g: Group) => {
+      const label = { male: '♂ Male', female: '♀ Female', mixed: '⚥ Mixed', other: '— Other' }[g.type]
+      const clr = { male: '#1d4ed8', female: '#be185d', mixed: '#6d28d9', other: '#6b7280' }[g.type]
+      const bg  = { male: '#dbeafe', female: '#fce7f3', mixed: '#ede9fe', other: '#f3f4f6' }[g.type]
+      return `<div class="gc"><div class="gh"><span class="gn">Group ${g.num}</span><span class="gb" style="background:${bg};color:${clr}">${label}</span></div>${g.members.map((m, i) => `<div class="mr"><span class="mi">${i + 1}</span><span class="mn">${m.name}</span><span class="mr2">${m.roll_no}</span><span class="mg">${m.gender}</span></div>`).join('')}<div class="gf">${g.members.length} members</div></div>`
+    }
 
-    const html = `<!DOCTYPE html><html><head><title>Squid Game — Groups</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;background:#fff;color:#111;padding:20px}
-  h1{text-align:center;font-size:20px;margin-bottom:4px}
-  .subtitle{text-align:center;color:#666;font-size:13px;margin-bottom:20px}
-  .section-title{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px;padding:6px 12px;border-radius:4px}
-  .section-title.male{background:#dbeafe;color:#1d4ed8}
-  .section-title.female{background:#fce7f3;color:#be185d}
-  .section-title.mixed{background:#ede9fe;color:#6d28d9}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .group-card{border:1px solid #ddd;border-radius:8px;padding:12px;page-break-inside:avoid}
-  .group-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .group-num{font-weight:800;font-size:14px}
-  .group-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px}
-  .group-badge.male{background:#dbeafe;color:#1d4ed8}
-  .group-badge.female{background:#fce7f3;color:#be185d}
-  .group-badge.mixed{background:#ede9fe;color:#6d28d9}
-  .group-badge.other{background:#f3f4f6;color:#6b7280}
-  .member-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;background:#f9f9f9;margin-bottom:4px}
-  .member-idx{width:20px;height:20px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
-  .member-name{flex:1;font-size:12px;font-weight:600}
-  .member-roll{font-size:11px;color:#666;font-family:monospace}
-  .member-gender{font-size:10px;font-weight:700;padding:1px 5px;border-radius:100px;background:#e5e7eb}
-  @media print{body{padding:10px}.no-print{display:none}}
-</style></head><body>
-<div class="no-print" style="text-align:center;margin-bottom:16px">
-  <button onclick="window.print()" style="padding:8px 20px;background:#E31B6D;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px">🖨️ Print</button>
-</div>
-<h1>PARADOX26 — SQUID GAME · Groups</h1>
-<div class="subtitle">${groups.length} groups · ${players.length} active players · ${groupSize} per group</div>
+    const mG = gs.filter(g => g.type === 'male')
+    const fG = gs.filter(g => g.type === 'female')
+    const xG = gs.filter(g => g.type === 'mixed' || g.type === 'other')
 
-${maleGroups.length ? `<div class="section-title male">♂ Male Groups (${maleGroups.length})</div><div class="grid">${maleGroups.map(renderGroup).join('')}</div>` : ''}
-${femaleGroups.length ? `<div class="section-title female">♀ Female Groups (${femaleGroups.length})</div><div class="grid">${femaleGroups.map(renderGroup).join('')}</div>` : ''}
-${mixedGroups.length ? `<div class="section-title mixed">⚥ Mixed / Remaining Groups (${mixedGroups.length})</div><div class="grid">${mixedGroups.map(renderGroup).join('')}</div>` : ''}
+    const html = `<!DOCTYPE html><html><head><title>Groups — ${roundName}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial;padding:16px;color:#111}
+h1{text-align:center;font-size:18px;margin-bottom:4px}.sub{text-align:center;color:#666;font-size:12px;margin-bottom:16px}
+.st{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:5px 10px;border-radius:4px;margin:14px 0 8px;display:inline-block}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.gc{border:1px solid #ddd;border-radius:8px;padding:10px;page-break-inside:avoid}
+.gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.gn{font-weight:800;font-size:13px}.gb{font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px}
+.mr{display:flex;align-items:center;gap:6px;padding:4px 7px;background:#f9f9f9;border-radius:4px;margin-bottom:3px}
+.mi{width:18px;height:18px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.mn{flex:1;font-size:11px;font-weight:600}.mr2{font-size:10px;color:#666;font-family:monospace}
+.mg{font-size:9px;font-weight:700;padding:1px 5px;border-radius:100px;background:#e5e7eb}
+.gf{font-size:9px;color:#999;text-align:right;margin-top:6px}
+.np{text-align:center;padding:10px;background:#fff3cd;margin-bottom:12px}
+.np button{padding:5px 14px;background:#E31B6D;color:#fff;border:none;border-radius:4px;cursor:pointer}
+@media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np">Set margins to None · <button onclick="window.print()">🖨️ Print</button></div>
+<h1>PARADOX26 — ${roundName} · Groups</h1>
+<div class="sub">${gs.length} groups · ${ps.length} players (♂${males} ♀${females}) · ${groupSize} per group</div>
+${mG.length ? `<div class="st" style="background:#dbeafe;color:#1d4ed8">♂ Male Groups (${mG.length})</div><div class="grid">${mG.map(renderG).join('')}</div>` : ''}
+${fG.length ? `<div class="st" style="background:#fce7f3;color:#be185d">♀ Female Groups (${fG.length})</div><div class="grid">${fG.map(renderG).join('')}</div>` : ''}
+${xG.length ? `<div class="st" style="background:#ede9fe;color:#6d28d9">⚥ Mixed Groups (${xG.length})</div><div class="grid">${xG.map(renderG).join('')}</div>` : ''}
 </body></html>`
 
     const w = window.open('', '_blank')
-    if (!w) { toast.error('Allow popups to print'); return }
-    w.document.write(html)
-    w.document.close()
+    if (!w) { toast.error('Allow popups'); return }
+    w.document.write(html); w.document.close()
   }
 
-  // Stats
-  const males   = players.filter(p => p.gender === 'M').length
-  const females = players.filter(p => p.gender === 'F').length
-  const others  = players.length - males - females
-  const maleGroups   = groups.filter(g => g.type === 'male').length
-  const femaleGroups = groups.filter(g => g.type === 'female').length
-  const mixedGroups  = groups.filter(g => g.type === 'mixed' || g.type === 'other').length
+  const maleG = groups.filter(g => g.type === 'male')
+  const femaleG = groups.filter(g => g.type === 'female')
+  const mixedG = groups.filter(g => g.type === 'mixed' || g.type === 'other')
 
   return (
-    <div className="card" style={{ marginTop: 8 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 3 }}>Group Maker</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            Groups active players — same gender first, mixed at the end
-          </div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>Group Maker</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Gender-first grouping of active players</div>
         </div>
-        {generated && (
-          <button className="btn btn-ghost btn-sm" onClick={printGroups} id="print-groups-btn">
-            🖨️ Print Groups
-          </button>
-        )}
+        {done && <button className="btn btn-ghost btn-sm" onClick={() => printGroups(groups, players)} id={`print-groups-${roundId}`}>🖨️ Print Groups</button>}
       </div>
 
-      {/* Controls */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: done ? 14 : 0 }}>
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="label">Players per group</label>
-          <input
-            id="group-size-input"
-            type="number"
-            className="input"
-            value={groupSize}
-            min={2} max={50}
-            onChange={e => { setGroupSize(Number(e.target.value)); setGenerated(false) }}
-            style={{ width: 110 }}
-          />
+          <label className="label" style={{ fontSize: 11 }}>Players per group</label>
+          <input id={`gs-${roundId}`} type="number" className="input" value={groupSize} min={2} max={50}
+            onChange={e => { setGroupSize(Number(e.target.value)); setDone(false) }} style={{ width: 100 }} />
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={generate}
-          disabled={loading}
-          id="generate-groups-btn"
-          style={{ marginBottom: 0 }}
-        >
-          {loading ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div className="spinner" style={{ width: 16, height: 16 }} /> Fetching...
-            </span>
-          ) : '⚡ Generate Groups'}
+        <button className="btn btn-primary btn-sm" onClick={generate} disabled={loading} id={`gen-${roundId}`}>
+          {loading ? <><span className="spinner" style={{ width: 14, height: 14, display: 'inline-block' }} /> Generating…</> : '⚡ Generate Groups'}
         </button>
       </div>
 
-      {/* Algorithm explanation */}
-      {!generated && (
-        <div style={{
-          display: 'flex', gap: 0, flexWrap: 'wrap',
-          padding: '12px 16px', borderRadius: 'var(--radius-sm)',
-          background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-          fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6,
-        }}>
-          <div>
-            <strong style={{ color: '#63b3ed' }}>Step 1:</strong> All male players → full groups of {groupSize}
-            {'  →  '}
-            <strong style={{ color: 'var(--pink)' }}>Step 2:</strong> All female players → full groups of {groupSize}
-            {'  →  '}
-            <strong style={{ color: '#9a49ee' }}>Step 3:</strong> Remaining leftovers → mixed groups
+      {done && groups.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted)' }}>
+            <span>👥 {players.length} active players</span>
+            <span style={{ color: '#63b3ed' }}>♂ {players.filter(p => p.gender === 'M').length}</span>
+            <span style={{ color: 'var(--pink)' }}>♀ {players.filter(p => p.gender === 'F').length}</span>
+            <span style={{ marginLeft: 'auto', fontWeight: 700 }}>
+              {groups.length} groups
+              {maleG.length > 0 && <span style={{ color: '#63b3ed', marginLeft: 8 }}>♂{maleG.length}</span>}
+              {femaleG.length > 0 && <span style={{ color: 'var(--pink)', marginLeft: 8 }}>♀{femaleG.length}</span>}
+              {mixedG.length > 0 && <span style={{ color: '#9a49ee', marginLeft: 8 }}>⚥{mixedG.length}</span>}
+            </span>
           </div>
-        </div>
-      )}
 
-      {/* Stats bar */}
-      {generated && (
-        <div style={{
-          display: 'flex', gap: 20, flexWrap: 'wrap',
-          padding: '12px 16px', borderRadius: 'var(--radius-sm)',
-          background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-          marginBottom: 20, fontSize: 13,
-        }}>
-          <span>👥 <strong>{players.length}</strong> active players</span>
-          <span style={{ color: '#63b3ed' }}>♂ {males} males</span>
-          <span style={{ color: 'var(--pink)' }}>♀ {females} females</span>
-          {others > 0 && <span style={{ color: 'var(--text-muted)' }}>— {others} other</span>}
-          <span style={{ marginLeft: 'auto', fontWeight: 700 }}>
-            🏷️ {groups.length} groups total
-            {maleGroups > 0 && <span style={{ color: '#63b3ed', marginLeft: 10 }}>♂ {maleGroups}</span>}
-            {femaleGroups > 0 && <span style={{ color: 'var(--pink)', marginLeft: 10 }}>♀ {femaleGroups}</span>}
-            {mixedGroups > 0 && <span style={{ color: '#9a49ee', marginLeft: 10 }}>⚥ {mixedGroups} mixed</span>}
-          </span>
-        </div>
-      )}
-
-      {/* Groups grid */}
-      {generated && groups.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Male groups */}
-          {groups.filter(g => g.type === 'male').length > 0 && (
+          {maleG.length > 0 && (
             <div>
-              <div style={{
-                fontSize: 12, fontWeight: 700, color: '#63b3ed',
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(99,179,237,0.2)' }} />
-                ♂ Male Groups
-                <div style={{ flex: 1, height: 1, background: 'rgba(99,179,237,0.2)' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#63b3ed', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(99,179,237,0.2)' }} />♂ Male<div style={{ flex: 1, height: 1, background: 'rgba(99,179,237,0.2)' }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-                {groups.filter(g => g.type === 'male').map(g => <GroupCard key={g.num} group={g} />)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: 10 }}>
+                {maleG.map(g => <GroupCard key={g.num} group={g} />)}
               </div>
             </div>
           )}
-
           {/* Female groups */}
-          {groups.filter(g => g.type === 'female').length > 0 && (
+          {femaleG.length > 0 && (
             <div>
-              <div style={{
-                fontSize: 12, fontWeight: 700, color: 'var(--pink)',
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,45,120,0.2)' }} />
-                ♀ Female Groups
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,45,120,0.2)' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,45,120,0.2)' }} />♀ Female<div style={{ flex: 1, height: 1, background: 'rgba(255,45,120,0.2)' }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-                {groups.filter(g => g.type === 'female').map(g => <GroupCard key={g.num} group={g} />)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: 10 }}>
+                {femaleG.map(g => <GroupCard key={g.num} group={g} />)}
               </div>
             </div>
           )}
-
-          {/* Mixed / remaining groups */}
-          {groups.filter(g => g.type === 'mixed' || g.type === 'other').length > 0 && (
+          {/* Mixed groups */}
+          {mixedG.length > 0 && (
             <div>
-              <div style={{
-                fontSize: 12, fontWeight: 700, color: '#9a49ee',
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(154,73,238,0.2)' }} />
-                ⚥ Mixed / Remaining Groups
-                <div style={{ flex: 1, height: 1, background: 'rgba(154,73,238,0.2)' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#9a49ee', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(154,73,238,0.2)' }} />⚥ Mixed / Remaining<div style={{ flex: 1, height: 1, background: 'rgba(154,73,238,0.2)' }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-                {groups.filter(g => g.type === 'mixed' || g.type === 'other').map(g => <GroupCard key={g.num} group={g} />)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: 10 }}>
+                {mixedG.map(g => <GroupCard key={g.num} group={g} />)}
               </div>
             </div>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Expanded round detail ────────────────────────────────────────────────────
+function RoundDetail({ round, roundId }: { round: Round; roundId: string }) {
+  const supabase = createClient()
+  const [participants, setParticipants] = useState<RoundParticipant[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  const load = async () => {
+    if (loaded) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('round_results')
+      .select(`result, participant:participants(participant_id, name, roll_no, gender, assigned_qr)`)
+      .eq('round_id', roundId)
+    const rows: RoundParticipant[] = (data || []).map((r: any) => ({
+      ...r.participant,
+      result: r.result,
+    }))
+    rows.sort((a, b) => a.roll_no.localeCompare(b.roll_no))
+    setParticipants(rows)
+    setLoaded(true)
+    setLoading(false)
+  }
+
+  // Load on first render
+  useState(() => { load() })
+
+  const survived  = (participants || []).filter(p => p.result === 'survived')
+  const eliminated = (participants || []).filter(p => p.result === 'eliminated')
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+      {loading && <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '12px 0' }}>Loading round data…</div>}
+
+      {participants !== null && (
+        <>
+          {participants.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '8px 0' }}>
+              No results recorded for this round yet.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 0 }}>
+              {/* Survived */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  ✓ Survived ({survived.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+                  {survived.map(p => (
+                    <div key={p.participant_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.roll_no}</div>
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.gender}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Eliminated */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  ✗ Eliminated ({eliminated.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+                  {eliminated.map(p => (
+                    <div key={p.participant_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(255,68,68,0.06)', border: '1px solid rgba(255,68,68,0.15)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.roll_no}</div>
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.gender}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Group Maker for this round */}
+      <RoundGroupMaker roundId={roundId} roundName={round.round_name} />
     </div>
   )
 }
 
 // ─── Main Rounds Client ───────────────────────────────────────────────────────
 export default function RoundsClient({ rounds, eventState, roundResults }: {
-  rounds: Round[], eventState: EventState | null, roundResults: { round_id: string; result: string }[]
+  rounds: Round[]
+  eventState: EventState | null
+  roundResults: { round_id: string; result: string }[]
 }) {
   const supabase = createClient()
   const [currentRoundId, setCurrentRoundId] = useState(eventState?.current_round_id || null)
   const [loading, setLoading] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   const setActive = async (roundId: string) => {
     setLoading(roundId)
@@ -382,86 +336,100 @@ export default function RoundsClient({ rounds, eventState, roundResults }: {
       .from('event_state')
       .update({ current_round_id: roundId, updated_at: new Date().toISOString() })
       .eq('id', 1)
-    if (error) {
-      toast.error('Failed to update round')
-    } else {
+    if (error) toast.error('Failed to update round')
+    else {
       setCurrentRoundId(roundId)
-      const round = rounds.find(r => r.round_id === roundId)
-      toast.success(`Active round: ${round?.round_name}`)
+      toast.success(`Active: ${rounds.find(r => r.round_id === roundId)?.round_name}`)
     }
     setLoading(null)
   }
 
-  const getRoundStats = (roundId: string) => {
-    const results = roundResults.filter(r => r.round_id === roundId)
-    return {
-      survived: results.filter(r => r.result === 'survived').length,
-      eliminated: results.filter(r => r.result === 'eliminated').length,
-    }
+  const getStats = (roundId: string) => {
+    const rr = roundResults.filter(r => r.round_id === roundId)
+    return { survived: rr.filter(r => r.result === 'survived').length, eliminated: rr.filter(r => r.result === 'eliminated').length }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Round Management</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Set the active round — all scanners update instantly</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Click a round to view results and create groups</p>
       </div>
 
-      {/* Rounds list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {rounds.map(round => {
-          const isActive = round.round_id === currentRoundId
-          const stats = getRoundStats(round.round_id)
-          return (
-            <div key={round.round_id} className="card" style={{
-              border: isActive ? '1px solid rgba(255,45,120,0.4)' : '1px solid var(--border)',
-              background: isActive ? 'rgba(255,45,120,0.05)' : 'var(--bg-card)',
-              position: 'relative', overflow: 'hidden',
-            }}>
-              {isActive && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--pink)' }} />}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: isActive ? 'var(--pink)' : 'var(--bg-secondary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14, fontWeight: 800, flexShrink: 0,
-                    color: isActive ? 'white' : 'var(--text-secondary)',
-                  }}>
-                    {round.round_order}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 17, fontWeight: 700 }}>{round.round_name}</div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 13 }}>
-                      <span style={{ color: 'var(--teal)' }}>✓ {stats.survived} survived</span>
-                      <span style={{ color: 'var(--red)' }}>✗ {stats.eliminated} eliminated</span>
-                    </div>
+      {rounds.map(round => {
+        const isActive = round.round_id === currentRoundId
+        const isExpanded = expanded === round.round_id
+        const stats = getStats(round.round_id)
+        const hasResults = stats.survived + stats.eliminated > 0
+
+        return (
+          <div key={round.round_id} className="card" style={{
+            border: isActive ? '1px solid rgba(255,45,120,0.45)' : '1px solid var(--border)',
+            background: isActive ? 'rgba(255,45,120,0.04)' : 'var(--bg-card)',
+            position: 'relative', overflow: 'hidden',
+            cursor: 'pointer',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+          }}>
+            {isActive && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--pink)' }} />}
+
+            {/* Round header row — click to expand */}
+            <div
+              onClick={() => setExpanded(isExpanded ? null : round.round_id)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                {/* Number badge */}
+                <div style={{
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: isActive ? 'var(--pink)' : 'var(--bg-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 15, fontWeight: 800, flexShrink: 0,
+                  color: isActive ? 'white' : 'var(--text-secondary)',
+                }}>
+                  {round.round_order}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{round.round_name}</div>
+                  <div style={{ display: 'flex', gap: 14, marginTop: 3, fontSize: 12 }}>
+                    <span style={{ color: 'var(--teal)' }}>✓ {stats.survived} survived</span>
+                    <span style={{ color: 'var(--red)' }}>✗ {stats.eliminated} eliminated</span>
+                    {hasResults && (
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {Math.round(stats.survived / (stats.survived + stats.eliminated) * 100)}% survival
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {isActive && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 100, background: 'var(--pink-subtle)', border: '1px solid rgba(255,45,120,0.3)' }}>
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--pink)' }} className="pulse" />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pink)' }}>ACTIVE</span>
-                    </div>
-                  )}
-                  <button
-                    className={`btn ${isActive ? 'btn-ghost' : 'btn-primary'} btn-sm`}
-                    onClick={() => setActive(round.round_id)}
-                    disabled={isActive || !!loading}
-                    id={`set-round-${round.round_order}`}
-                  >
-                    {loading === round.round_id ? '...' : isActive ? 'Current' : 'Set Active'}
-                  </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {isActive && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 100, background: 'var(--pink-subtle)', border: '1px solid rgba(255,45,120,0.3)' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--pink)' }} className="pulse" />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--pink)' }}>ACTIVE</span>
+                  </div>
+                )}
+                <button
+                  className={`btn ${isActive ? 'btn-ghost' : 'btn-primary'} btn-sm`}
+                  onClick={e => { e.stopPropagation(); setActive(round.round_id) }}
+                  disabled={isActive || !!loading}
+                  id={`set-round-${round.round_order}`}
+                >
+                  {loading === round.round_id ? '…' : isActive ? 'Current' : 'Set Active'}
+                </button>
+                {/* Expand chevron */}
+                <div style={{ fontSize: 16, color: 'var(--text-muted)', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', userSelect: 'none' }}>
+                  ▾
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
 
-      {/* Group Maker */}
-      <GroupMaker />
+            {/* Expanded content */}
+            {isExpanded && <RoundDetail round={round} roundId={round.round_id} />}
+          </div>
+        )
+      })}
     </div>
   )
 }
