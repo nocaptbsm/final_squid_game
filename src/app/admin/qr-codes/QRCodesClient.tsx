@@ -3,10 +3,19 @@ import { useEffect, useState, useRef } from 'react'
 import QRCode from 'qrcode'
 import toast from 'react-hot-toast'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://squidgame.paradox26.in')
+// Always use the domain you're currently on — so QRs encode the correct URL.
+// Optionally override with NEXT_PUBLIC_SITE_URL in Vercel env vars.
+function getSiteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL)
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  if (typeof window !== 'undefined')
+    return window.location.origin
+  return ''
+}
 
 async function genUrl(id: string): Promise<string> {
-  return QRCode.toDataURL(`${SITE_URL}/player/${id}`, {
+  const base = getSiteUrl()
+  return QRCode.toDataURL(`${base}/player/${id}`, {
     width: 400, margin: 2,
     color: { dark: '#000000', light: '#ffffff' },
     errorCorrectionLevel: 'M',
@@ -20,6 +29,37 @@ function pad(n: number, total: number) {
 function b64(dataUrl: string) { return dataUrl.split(',')[1] }
 
 interface QRItem { id: string; url: string }
+
+// Shows the URL being encoded so admin can verify before generating
+function UrlBanner({ count }: { count: number }) {
+  const url = getSiteUrl()
+  const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1') || url === ''
+  return (
+    <div style={{
+      padding: '12px 16px', borderRadius: 'var(--radius-sm)',
+      background: isLocalhost ? 'rgba(255,180,0,0.08)' : 'rgba(0,212,170,0.07)',
+      border: `1px solid ${isLocalhost ? 'rgba(255,180,0,0.4)' : 'rgba(0,212,170,0.3)'}`,
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+    }}>
+      <span style={{ fontSize: 20, flexShrink: 0 }}>{isLocalhost ? '⚠️' : '✅'}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: isLocalhost ? '#ffb400' : 'var(--teal)', marginBottom: 4 }}>
+          {isLocalhost
+            ? 'Warning — QRs will encode a localhost URL (not scannable from other devices)'
+            : 'QRs will encode this URL — looks correct:'}
+        </div>
+        <code style={{ fontSize: 11, color: isLocalhost ? '#ffb400' : 'var(--teal)', wordBreak: 'break-all', display: 'block' }}>
+          {url}/player/SG-001 … SG-{String(count).padStart(3, '0')}
+        </code>
+        {isLocalhost && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+            ➜ Open this page from your <strong style={{ color: 'var(--text-primary)' }}>Vercel production URL</strong> to generate scannable QR codes.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function QRCodesClient() {
   const [count, setCount] = useState(350)
@@ -114,7 +154,7 @@ export default function QRCodesClient() {
         <img src="${q.url}" alt="${q.id}" />
         <div class="qr-id">${q.id}</div>
         <div class="event-name">PARADOX26 · SQUID GAME</div>
-        <div class="url-hint">${SITE_URL}/player/${q.id}</div>
+        <div class="url-hint">${getSiteUrl()}/player/${q.id}</div>
       </div>`
 
     const html = `<!DOCTYPE html><html><head>
@@ -208,6 +248,9 @@ ${pages.map(page => `<div class="page">${page.map(renderCard).join('')}</div>`).
           Print once — works forever even after data resets
         </p>
       </div>
+
+      {/* URL verification banner */}
+      <UrlBanner count={count} />
 
       {/* Controls bar */}
       <div className="card" style={{ padding: '16px 20px' }}>
