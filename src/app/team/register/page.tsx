@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { BrowserQRCodeReader } from '@zxing/browser'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
+import { beep, beepSuccess, beepWarning, beepError } from '@/lib/beep'
 
 type State = 'scanning' | 'already_registered' | 'entering_roll' | 'submitting' | 'success' | 'error'
 
@@ -44,9 +45,11 @@ export default function RegisterPage() {
                 .eq('assigned_qr', qrId)
                 .single()
               if (existing) {
+                beepWarning()           // already registered
                 setExistingParticipant(existing)
                 setState('already_registered')
               } else {
+                beep()                 // fresh QR — ready to register
                 setExistingParticipant(null)
                 setState('entering_roll')
               }
@@ -76,10 +79,12 @@ export default function RegisterPage() {
     })
     if (error || !data?.success) {
       const msg = data?.message || error?.message || 'Registration failed'
+      beepError()
       setLastResult({ success: false, message: msg })
       setState('error')
       toast.error(msg)
     } else {
+      beepSuccess()
       setLastResult({ success: true, message: `${data.participant.name} registered as ${data.participant.assigned_qr}` })
       setState('success')
       toast.success('Registration successful!')

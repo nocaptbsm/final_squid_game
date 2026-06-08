@@ -4,6 +4,7 @@ import { BrowserQRCodeReader } from '@zxing/browser'
 import { createClient } from '@/lib/supabase/client'
 import { Participant, Round } from '@/lib/types'
 import toast from 'react-hot-toast'
+import { beep, beepSuccess, beepWarning, beepError } from '@/lib/beep'
 
 type State = 'scanning' | 'loaded' | 'already_recorded' | 'submitting' | 'result_shown' | 'locked'
 type ScanResult = { success: boolean; message: string; error?: string }
@@ -60,6 +61,7 @@ export default function RoundScanPage() {
               .single()
 
             if (!p) {
+              beepError()
               toast.error('QR not registered yet')
               setTimeout(startScanner, 2000)
               return
@@ -69,6 +71,7 @@ export default function RoundScanPage() {
 
             // 2. Globally eliminated → locked forever
             if (p.current_status === 'eliminated') {
+              beepError()
               setState('locked')
               return
             }
@@ -84,6 +87,7 @@ export default function RoundScanPage() {
                 .single()
 
               if (rr) {
+                beepWarning()
                 setExistingResult(rr.result as 'survived' | 'eliminated')
                 setState('already_recorded')
                 return
@@ -91,6 +95,7 @@ export default function RoundScanPage() {
             }
 
             // 4. Fresh — show buttons
+            beep()
             setState('loaded')
           }
         }
@@ -114,14 +119,15 @@ export default function RoundScanPage() {
     })
     if (error || !data?.success) {
       const msg = data?.message || error?.message || 'Failed'
+      beepError()
       setScanResult({ success: false, message: msg, error: data?.error })
       setState('result_shown')
       toast.error(msg)
     } else {
       setScanResult({ success: true, message: result === 'survived' ? `${data.participant.name} — Survived ✓` : `${data.participant.name} — Eliminated` })
       setState('result_shown')
-      if (result === 'survived') toast.success('Survived ✓')
-      else toast.error('Eliminated')
+      if (result === 'survived') { beepSuccess(); toast.success('Survived ✓') }
+      else { beepError(); toast.error('Eliminated') }
     }
     setTimeout(() => startScanner(), 2500)
   }
