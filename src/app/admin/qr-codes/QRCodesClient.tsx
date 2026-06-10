@@ -149,8 +149,8 @@ export default function QRCodesClient() {
     const renderCard = (q: QRItem) => `
       <div class="qr-card">
         <div class="card-header">
-          <img src="${base}/squid_logo.jpg" class="squid-logo" alt="Squid Game" />
-          <img src="${base}/paradox_logo.jpg" class="paradox-logo" alt="IIT Madras Paradox" />
+          <img src="${base}/squid_logo_new.jpg" class="squid-logo" alt="Squid Game" />
+          <img src="${base}/paradox_logo_new.jpg" class="paradox-logo" alt="IIT Madras Paradox" />
         </div>
         <img src="${q.url}" class="qr-img" alt="${q.id}" />
         <div class="qr-id">${q.id}</div>
