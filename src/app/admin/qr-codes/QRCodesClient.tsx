@@ -8,8 +8,13 @@ import { squidLogo, paradoxLogo } from '@/lib/logosBase64'
 // Always use the domain you're currently on — so QRs encode the correct URL.
 // Optionally override with NEXT_PUBLIC_SITE_URL in Vercel env vars.
 function getSiteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL)
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    try {
+      return new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
+    } catch {
+      return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+    }
+  }
   if (typeof window !== 'undefined')
     return window.location.origin
   return ''
