@@ -65,7 +65,7 @@ function UrlBanner({ count }: { count: number }) {
 
 export default function QRCodesClient() {
   const [count, setCount] = useState(350)
-  const [prefix, setPrefix] = useState('SG')
+  const [prefix, setPrefix] = useState('SG26')
   const [qrs, setQrs] = useState<QRItem[]>([])
   const [genProgress, setGenProgress] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
