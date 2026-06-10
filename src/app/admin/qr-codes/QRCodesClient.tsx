@@ -130,38 +130,37 @@ export default function QRCodesClient() {
     setActionProgress(0)
   }
 
-  // Print — 6 per A4 page
+  // Print — 4 per A4 page with specific layout
   const handlePrint = async () => {
     if (!qrs.length) { toast.error('Generate QR codes first'); return }
     setActionPhase('print')
     toast('Preparing print sheet…')
 
-    const PER_PAGE = 6 // 2 columns × 3 rows on A4
+    const PER_PAGE = 4 // 2 columns × 2 rows on A4
 
-    // Split into pages of 6
+    // Split into pages of 4
     const pages: QRItem[][] = []
     for (let i = 0; i < qrs.length; i += PER_PAGE) {
       pages.push(qrs.slice(i, i + PER_PAGE))
     }
 
+    const base = getSiteUrl()
+
     const renderCard = (q: QRItem) => `
       <div class="qr-card">
-        <div class="shapes">
-          <div class="circle"></div>
-          <div class="triangle"></div>
-          <div class="square"></div>
+        <div class="card-header">
+          <img src="${base}/squid_logo.jpg" class="squid-logo" alt="Squid Game" />
+          <img src="${base}/paradox_logo.jpg" class="paradox-logo" alt="IIT Madras Paradox" />
         </div>
-        <img src="${q.url}" alt="${q.id}" />
+        <img src="${q.url}" class="qr-img" alt="${q.id}" />
         <div class="qr-id">${q.id}</div>
-        <div class="event-name">PARADOX26 · SQUID GAME</div>
-        <div class="url-hint">${getSiteUrl()}/player/${q.id}</div>
       </div>`
 
     const html = `<!DOCTYPE html><html><head>
 <title>Squid Game QR Cards</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; background: white; }
+  body { font-family: 'Inter', Arial, sans-serif; background: white; }
   
   .no-print {
     text-align: center; padding: 14px;
@@ -183,38 +182,51 @@ export default function QRCodesClient() {
     page-break-after: always;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(3, 1fr);
-    gap: 6mm;
+    grid-template-rows: 1fr 1fr;
+    gap: 10mm;
     margin: 0 auto;
   }
   .page:last-child { page-break-after: auto; }
 
   .qr-card {
-    border: 1.5px solid #ddd;
-    border-radius: 6mm;
+    border: none;
     padding: 6mm;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 3mm;
+    justify-content: flex-start;
+    height: 100%;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 5mm;
+  }
+  .squid-logo {
+    height: 35mm;
+    object-fit: contain;
+  }
+  .paradox-logo {
+    height: 35mm;
+    object-fit: contain;
+  }
+  .qr-img {
+    width: 90mm;
+    height: 90mm;
+    display: block;
+    margin: 0 auto 5mm auto;
+    /* Optional crisp edge */
+    image-rendering: pixelated; 
+  }
+  .qr-id {
+    font-size: 42px;
+    font-weight: 900;
+    color: #000;
+    letter-spacing: 2px;
     text-align: center;
   }
-  .qr-card img {
-    width: 60mm;
-    height: 60mm;
-    display: block;
-  }
-  .shapes { display: flex; gap: 4px; justify-content: center; }
-  .circle  { width: 9px; height: 9px; border-radius: 50%; background: #E31B6D; }
-  .triangle{ width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:9px solid #E31B6D; }
-  .square  { width: 9px; height: 9px; background: #E31B6D; }
-  .qr-id   { font-size: 22px; font-weight: 900; color: #E31B6D; letter-spacing: 2px; }
-  .event-name { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; }
-  .url-hint   { font-size: 7px; color: #bbb; word-break: break-all; }
-
-  /* Cut lines */
-  .page { outline: 0.3mm dashed #eee; }
 
   @media print {
     .no-print { display: none !important; }
@@ -233,7 +245,7 @@ ${pages.map(page => `<div class="page">${page.map(renderCard).join('')}</div>`).
     if (!w) { toast.error('Allow popups'); setActionPhase('idle'); return }
     w.document.write(html)
     w.document.close()
-    toast.success(`${qrs.length} cards ready — ${pages.length} pages (6 per page)`)
+    toast.success(`${qrs.length} cards ready — ${pages.length} pages (4 per page)`)
     setActionPhase('idle')
   }
 
