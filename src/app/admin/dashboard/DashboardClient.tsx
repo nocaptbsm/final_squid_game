@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { DashboardStats, Round } from '@/lib/types'
 import toast from 'react-hot-toast'
+import { fetchAll } from '@/lib/supabase/fetchAll'
 
 // ─── Reset Confirmation Modal ─────────────────────────────────────────────────
 function ResetModal({ onClose, onConfirmed }: { onClose: () => void; onConfirmed: () => void }) {
   const [typed, setTyped] = useState('')
   const [resetting, setResetting] = useState(false)
-
 
   const handleReset = async () => {
     setResetting(true)
@@ -29,7 +29,6 @@ function ResetModal({ onClose, onConfirmed }: { onClose: () => void; onConfirmed
     }
   }
 
-
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
@@ -38,68 +37,50 @@ function ResetModal({ onClose, onConfirmed }: { onClose: () => void; onConfirmed
       padding: 24,
       backdropFilter: 'blur(4px)',
     }}>
-      <div className="card" style={{
-        width: '100%', maxWidth: 440,
-        border: '1px solid rgba(255,68,68,0.4)',
-        position: 'relative',
-      }}>
-        {/* Red top stripe */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'var(--red)', borderRadius: 'var(--radius) var(--radius) 0 0' }} />
+      <div className="card" style={{ maxWidth: 400, width: '100%', borderColor: 'rgba(255,68,68,0.3)', background: 'var(--bg-card)' }}>
+        <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--red)', marginBottom: 8 }}>
+          Reset All Data
+        </h3>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
+          This will wipe all round results and permanently unregister all players. <strong>This action cannot be undone.</strong>
+        </p>
 
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%',
-            background: 'rgba(255,68,68,0.12)', border: '2px solid rgba(255,68,68,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, margin: '0 auto 16px',
-          }}>⚠️</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--red)', marginBottom: 8 }}>
-            Reset All Data
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            This will permanently delete <strong style={{ color: 'var(--text-primary)' }}>all participants</strong>,{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>round results</strong>, and{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>audit logs</strong>.
-            The active round will be cleared. This cannot be undone.
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="label" style={{ textAlign: 'center', display: 'block', marginBottom: 8 }}>
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
             Type <strong style={{ color: 'var(--red)', letterSpacing: 2 }}>RESET</strong> to confirm
           </label>
           <input
             id="reset-confirm-input"
-            className="input"
+            type="text"
             placeholder="RESET"
             value={typed}
-            onChange={e => setTyped(e.target.value.toUpperCase())}
+            onChange={e => setTyped(e.target.value)}
             style={{
-              textAlign: 'center', fontWeight: 800, fontSize: 18, letterSpacing: 4,
+              width: '100%', padding: '12px 16px', fontSize: 16,
+              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
               borderColor: typed === 'RESET' ? 'var(--red)' : undefined,
+              borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+              fontFamily: 'monospace', letterSpacing: 2, textAlign: 'center'
             }}
-            autoFocus
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
           <button
+            disabled={resetting}
+            id="reset-cancel-btn"
             className="btn btn-ghost"
             style={{ flex: 1 }}
             onClick={onClose}
-            disabled={resetting}
-            id="reset-cancel-btn"
           >
             Cancel
           </button>
           <button
-            className="btn"
             id="reset-confirm-btn"
             style={{
-              flex: 1,
+              flex: 1, border: 'none', borderRadius: 'var(--radius-sm)',
               background: typed === 'RESET' ? 'var(--red)' : 'rgba(255,68,68,0.15)',
               color: typed === 'RESET' ? '#fff' : 'rgba(255,68,68,0.4)',
-              border: '1px solid rgba(255,68,68,0.3)',
               fontWeight: 700, cursor: typed === 'RESET' ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}
@@ -107,7 +88,7 @@ function ResetModal({ onClose, onConfirmed }: { onClose: () => void; onConfirmed
             onClick={handleReset}
           >
             {resetting ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <div className="spinner" style={{ width: 16, height: 16 }} /> Resetting...
               </span>
             ) : '🗑️ Reset Everything'}
@@ -135,13 +116,11 @@ export default function DashboardClient({ initialStats, rounds }: { initialStats
   }, [])
 
   const refetch = async () => {
-    const [pRes, rrRes, esRes] = await Promise.all([
-      supabase.from('participants').select('current_status, registered'),
-      supabase.from('round_results').select('round_id, result'),
+    const [participants, roundResults, esRes] = await Promise.all([
+      fetchAll(supabase.from('participants').select('current_status, registered')),
+      fetchAll(supabase.from('round_results').select('round_id, result')),
       supabase.from('event_state').select('*, round:rounds(*)').eq('id', 1).single(),
     ])
-    const participants = pRes.data || []
-    const roundResults = rrRes.data || []
     const eventState = esRes.data
     const total = participants.length
     const registered = participants.filter(p => p.registered).length

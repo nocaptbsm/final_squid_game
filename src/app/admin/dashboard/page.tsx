@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from './DashboardClient'
+import { fetchAll } from '@/lib/supabase/fetchAll'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -7,15 +8,13 @@ export const revalidate = 0
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const [participantsRes, roundResultsRes, roundsRes, eventStateRes] = await Promise.all([
-    supabase.from('participants').select('current_status, registered'),
-    supabase.from('round_results').select('round_id, result'),
+  const [participants, roundResults, roundsRes, eventStateRes] = await Promise.all([
+    fetchAll(supabase.from('participants').select('current_status, registered')),
+    fetchAll(supabase.from('round_results').select('round_id, result')),
     supabase.from('rounds').select('*').order('round_order'),
     supabase.from('event_state').select('*, round:rounds(*)').eq('id', 1).single(),
   ])
 
-  const participants = participantsRes.data || []
-  const roundResults = roundResultsRes.data || []
   const rounds = roundsRes.data || []
   const eventState = eventStateRes.data
 
