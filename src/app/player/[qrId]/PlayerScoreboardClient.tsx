@@ -80,7 +80,7 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
             The dark oval is roughly at 57–64% from top, 6–72% width from left */}
         <div style={{
           position: 'absolute',
-          top: '56.5%',
+          top: '48%', // Moved up from 56.5%
           left: '5%',
           width: '68%',
           display: 'flex',
@@ -108,7 +108,7 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
             The dark rectangle is roughly at 68–73% from top */}
         <div style={{
           position: 'absolute',
-          top: '69%',
+          top: '58%', // Moved up from 69%
           left: '5%',
           width: '38%',
           display: 'flex',
