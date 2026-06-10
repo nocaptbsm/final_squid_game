@@ -83,22 +83,28 @@ export default function QRCodesClient() {
     generatingRef.current = true
     setIsGenerating(true)
     setGenProgress(0)
-    setQrs([])
 
-    const result: QRItem[] = []
-    const BATCH = 10
-    for (let i = 1; i <= c; i++) {
-      const id = `${p}-${pad(i, c)}`
-      const url = await genUrl(id)
-      result.push({ id, url })
-      // Update in batches for performance
-      if (i % BATCH === 0 || i === c) {
-        setQrs([...result])
-        setGenProgress(Math.round((i / c) * 100))
+    try {
+      setQrs([])
+      const result: QRItem[] = []
+      const BATCH = 10
+      for (let i = 1; i <= c; i++) {
+        const id = `${p}-${pad(i, c)}`
+        const url = await genUrl(id)
+        result.push({ id, url })
+        if (i % BATCH === 0 || i === c) {
+          setQrs([...result])
+          setGenProgress(Math.round((i / c) * 100))
+        }
       }
+      toast.success('QR codes generated successfully!')
+    } catch (e) {
+      toast.error('Failed to generate QRs')
+      console.error(e)
+    } finally {
+      setIsGenerating(false)
+      generatingRef.current = false
     }
-    setIsGenerating(false)
-    generatingRef.current = false
   }
 
   const applySettings = () => {
