@@ -44,10 +44,6 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
   const isEliminated = participant.current_status === 'eliminated'
   const isWinner = participant.current_status === 'winner'
 
-  // Only show rounds that are in the card image (up to 7, but image shows 5 nicely)
-  // We'll show all rounds dynamically in the round progress bar
-  const roundsToShow = rounds.slice(0, 7)
-
   return (
     <div style={{
       minHeight: '100vh',
@@ -56,224 +52,196 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      padding: '0',
+      padding: '24px 16px',
       fontFamily: "'Outfit', 'Inter', sans-serif",
     }}>
 
-      {/* Card container — matches image aspect ratio ~1:1.4 */}
+      {/* Main Scoreboard Card */}
       <div style={{
-        position: 'relative',
         width: '100%',
         maxWidth: 480,
-        margin: '0 auto',
+        background: 'linear-gradient(180deg, #161616 0%, #111111 100%)',
+        border: '1px solid #222',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
       }}>
 
-        {/* Base image */}
-        <img
-          src="/player-card.png"
-          alt="Player Card"
-          style={{ width: '100%', display: 'block' }}
-          draggable={false}
-        />
-
-        {/* ── PLAYER NAME overlay ────────────────────────────────
-            The dark oval is roughly at 57–64% from top, 6–72% width from left */}
+        {/* Header Area */}
         <div style={{
-          position: 'absolute',
-          top: '48%', // Moved up from 56.5%
-          left: '5%',
-          width: '68%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #1a0510 0%, #2d0a1a 100%)',
+          padding: '32px 24px',
+          textAlign: 'center',
+          position: 'relative',
         }}>
-          <span style={{
-            color: '#ffffff',
-            fontSize: 'clamp(13px, 3.5vw, 20px)',
-            fontWeight: 800,
-            letterSpacing: '0.04em',
-            textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+          {/* Logo / Icon */}
+          <div style={{ fontSize: 52, marginBottom: 16 }}>🦑</div>
+          
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: 900,
+            color: '#E31B6D',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            margin: '0 0 8px 0',
           }}>
-            {participant.name.toUpperCase()}
-          </span>
+            SQUID GAME
+          </h1>
+          <div style={{
+            fontSize: '10px',
+            color: '#888',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+          }}>
+            PARADOX26 · LIVE SCOREBOARD
+          </div>
+
+          {(isEliminated || isWinner) && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%) rotate(-10deg)',
+              padding: '8px 24px',
+              border: `4px solid ${isWinner ? '#ffd700' : '#e53935'}`,
+              borderRadius: '8px',
+              background: isWinner ? 'rgba(255,215,0,0.1)' : 'rgba(229,57,53,0.1)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 10,
+              pointerEvents: 'none',
+              boxShadow: `0 0 30px ${isWinner ? '#ffd70055' : '#e5393555'}`,
+            }}>
+              <span style={{
+                color: isWinner ? '#ffd700' : '#ff4444',
+                fontSize: '28px',
+                fontWeight: 900,
+                letterSpacing: '0.15em',
+                textShadow: `0 0 10px ${isWinner ? '#ffd700' : '#ff4444'}`,
+                whiteSpace: 'nowrap',
+              }}>
+                {isWinner ? '🏆 WINNER' : '☠ ELIMINATED'}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* ── PLAYER ID overlay ─────────────────────────────────
-            The dark rectangle is roughly at 68–73% from top */}
+        {/* Player Details Area */}
         <div style={{
-          position: 'absolute',
-          top: '58%', // Moved up from 69%
-          left: '5%',
-          width: '38%',
+          padding: '32px 24px',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          borderBottom: '1px solid #222',
         }}>
-          <span style={{
-            color: '#ff2d78',
-            fontSize: 'clamp(11px, 3vw, 17px)',
+          {/* ID Badge */}
+          <div style={{
+            padding: '6px 20px',
+            borderRadius: '100px',
+            background: 'rgba(227,27,109,0.1)',
+            border: '1px solid rgba(227,27,109,0.3)',
+            color: '#E31B6D',
             fontWeight: 900,
-            letterSpacing: '0.12em',
-            textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+            fontSize: '18px',
+            letterSpacing: '0.15em',
+            marginBottom: '16px',
           }}>
             {participant.assigned_qr}
-          </span>
+          </div>
+
+          {/* Player Name */}
+          <h2 style={{
+            color: '#fff',
+            fontSize: '28px',
+            fontWeight: 800,
+            margin: 0,
+            textAlign: 'center',
+            wordBreak: 'break-word',
+          }}>
+            {participant.name}
+          </h2>
         </div>
 
-        {/* ── ROUND PROGRESS result bars ─────────────────────────
-            5 bars at the bottom of the card, roughly 88–93% from top
-            Evenly spaced across the width */}
-        <div style={{
-          position: 'absolute',
-          bottom: '4.5%',
-          left: '1%',
-          width: '98%',
-          display: 'flex',
-          justifyContent: 'space-around',
-          gap: '1%',
-        }}>
-          {roundsToShow.map((round) => {
+        {/* Rounds List */}
+        <div style={{ padding: '0' }}>
+          {rounds.map((round, i) => {
             const result = getResult(round.round_id)
-            const survived = result === 'survived'
-            const eliminated = result === 'eliminated'
-            const pending = result === null
-
             return (
-              <div
-                key={round.round_id}
-                style={{
-                  flex: 1,
-                  height: 'clamp(14px, 3.5vw, 22px)',
-                  borderRadius: 3,
-                  background: pending
-                    ? 'rgba(20,10,10,0.85)'
-                    : survived
-                    ? '#00c853'
-                    : '#e53935',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.5s ease',
-                  boxShadow: pending ? 'none' : `0 0 8px ${survived ? '#00c85388' : '#e5393588'}`,
-                }}
-              >
-                {!pending && (
-                  <span style={{
-                    color: '#fff',
-                    fontSize: 'clamp(5px, 1.5vw, 9px)',
+              <div key={round.round_id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 24px',
+                borderBottom: i < rounds.length - 1 ? '1px solid #222' : 'none',
+                background: result === 'survived'
+                  ? 'linear-gradient(90deg, rgba(0,200,83,0.05) 0%, transparent 100%)'
+                  : result === 'eliminated'
+                  ? 'linear-gradient(90deg, rgba(229,57,53,0.05) 0%, transparent 100%)'
+                  : 'transparent',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#1a1a1a',
+                    border: '1px solid #333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
                     fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
+                    color: '#E31B6D',
+                    flexShrink: 0,
                   }}>
-                    {survived ? '✓ SURVIVED' : '✗ ELIM'}
+                    {i + 1}
+                  </div>
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: '#eee' }}>
+                    {round.round_name}
                   </span>
-                )}
+                </div>
+                
+                <div style={{
+                  padding: '6px 14px',
+                  borderRadius: '100px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  background: result === 'survived'
+                    ? 'rgba(0,200,83,0.12)'
+                    : result === 'eliminated'
+                    ? 'rgba(229,57,53,0.12)'
+                    : 'rgba(255,255,255,0.05)',
+                  color: result === 'survived'
+                    ? '#00c853'
+                    : result === 'eliminated'
+                    ? '#ff5252'
+                    : '#666',
+                  border: `1px solid ${
+                    result === 'survived' ? 'rgba(0,200,83,0.3)' 
+                    : result === 'eliminated' ? 'rgba(229,57,53,0.3)' 
+                    : '#333'
+                  }`,
+                }}>
+                  {result === 'survived' ? '✓ SURVIVED'
+                    : result === 'eliminated' ? '✗ ELIMINATED'
+                    : '— PENDING'}
+                </div>
               </div>
             )
           })}
         </div>
-
-        {/* ── STATUS BADGE — shown if eliminated or winner ───────── */}
-        {(isEliminated || isWinner) && (
-          <div style={{
-            position: 'absolute',
-            top: '48%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) rotate(-12deg)',
-            padding: '6px 20px',
-            borderRadius: 4,
-            border: `3px solid ${isWinner ? '#ffd700' : '#e53935'}`,
-            background: isWinner ? 'rgba(255,215,0,0.15)' : 'rgba(229,57,53,0.15)',
-            backdropFilter: 'blur(2px)',
-            pointerEvents: 'none',
-          }}>
-            <span style={{
-              color: isWinner ? '#ffd700' : '#ff4444',
-              fontSize: 'clamp(18px, 5vw, 28px)',
-              fontWeight: 900,
-              letterSpacing: '0.15em',
-              textShadow: `0 0 20px ${isWinner ? '#ffd700' : '#ff4444'}`,
-            }}>
-              {isWinner ? '🏆 WINNER' : '☠ ELIMINATED'}
-            </span>
-          </div>
-        )}
       </div>
-
-      {/* Below-card: round details list */}
+      
+      {/* Footer text */}
       <div style={{
-        width: '100%',
-        maxWidth: 480,
-        background: '#111',
-        borderTop: '2px solid #E31B6D',
+        marginTop: '24px',
+        textAlign: 'center',
+        fontSize: '11px',
+        color: '#555',
+        letterSpacing: '0.15em',
+        textTransform: 'uppercase',
       }}>
-        {roundsToShow.map((round, i) => {
-          const result = getResult(round.round_id)
-          return (
-            <div key={round.round_id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 16px',
-              borderBottom: i < roundsToShow.length - 1 ? '1px solid #222' : 'none',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: '#1a1a1a',
-                  border: '1px solid #333',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800, color: '#E31B6D', flexShrink: 0,
-                }}>
-                  {i + 1}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#ddd' }}>
-                  {round.round_name}
-                </span>
-              </div>
-              <div style={{
-                padding: '3px 12px',
-                borderRadius: 100,
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                background: result === 'survived'
-                  ? 'rgba(0,200,83,0.12)'
-                  : result === 'eliminated'
-                  ? 'rgba(229,57,53,0.12)'
-                  : 'rgba(255,255,255,0.05)',
-                color: result === 'survived'
-                  ? '#00c853'
-                  : result === 'eliminated'
-                  ? '#ff5252'
-                  : '#555',
-                border: `1px solid ${result === 'survived' ? 'rgba(0,200,83,0.3)' : result === 'eliminated' ? 'rgba(229,57,53,0.3)' : '#222'}`,
-              }}>
-                {result === 'survived' ? '✓ SURVIVED'
-                  : result === 'eliminated' ? '✗ ELIMINATED'
-                  : '— PENDING'}
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Footer */}
-        <div style={{
-          padding: '14px 16px',
-          textAlign: 'center',
-          fontSize: 10,
-          color: '#444',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-        }}>
-          TRUST NO ONE · PLAY FAIR · WIN BIG · PARADOX26
-        </div>
+        TRUST NO ONE · PLAY FAIR · WIN BIG
       </div>
     </div>
   )
