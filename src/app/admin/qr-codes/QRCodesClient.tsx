@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from 'react'
 import QRCode from 'qrcode'
 import toast from 'react-hot-toast'
 
+import { squidLogo, paradoxLogo } from '@/lib/logosBase64'
+
 // Always use the domain you're currently on — so QRs encode the correct URL.
 // Optionally override with NEXT_PUBLIC_SITE_URL in Vercel env vars.
 function getSiteUrl(): string {
@@ -144,13 +146,11 @@ export default function QRCodesClient() {
       pages.push(qrs.slice(i, i + PER_PAGE))
     }
 
-    const base = getSiteUrl()
-
     const renderCard = (q: QRItem) => `
       <div class="qr-card">
         <div class="card-header">
-          <img src="${base}/squid_logo_new.jpg" class="squid-logo" alt="Squid Game" />
-          <img src="${base}/paradox_logo_new.jpg" class="paradox-logo" alt="IIT Madras Paradox" />
+          <img src="${squidLogo}" class="squid-logo" alt="Squid Game" />
+          <img src="${paradoxLogo}" class="paradox-logo" alt="IIT Madras Paradox" />
         </div>
         <img src="${q.url}" class="qr-img" alt="${q.id}" />
         <div class="qr-id">${q.id}</div>
