@@ -101,14 +101,22 @@ export default function RegisterPage() {
 
       {/* Scanner */}
       {(state === 'scanning') && (
-        <div className="scanner-container">
-          <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
-          <div className="scanner-overlay">
-            <div style={{ position: 'relative', width: 200, height: 200 }}>
-              <div className="scan-frame" />
-              <div className="scan-line" />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div className="scanner-container">
+            <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+            <div className="scanner-overlay">
+              <div style={{ position: 'relative', width: 200, height: 200 }}>
+                <div className="scan-frame" />
+                <div className="scan-line" />
+              </div>
             </div>
           </div>
+          <button 
+            className="btn btn-ghost" 
+            onClick={() => { controlsRef.current?.stop(); setState('manual_entry') }}
+          >
+            Use Manual Entry (No Camera)
+          </button>
         </div>
       )}
 
