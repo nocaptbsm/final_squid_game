@@ -44,10 +44,27 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
   const isEliminated = participant.current_status === 'eliminated'
   const isWinner = participant.current_status === 'winner'
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Squid Game: ${participant.name}'s Scoreboard`,
+          text: `Check out ${participant.name}'s live status in the Squid Game! (ID: ${participant.assigned_qr})`,
+          url: window.location.href,
+        })
+      } catch (err) {
+        console.error('Error sharing', err)
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      alert('Link copied to clipboard!')
+    }
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0a',
+      background: '#050505',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -60,38 +77,50 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
       <div style={{
         width: '100%',
         maxWidth: 480,
-        background: 'linear-gradient(180deg, #161616 0%, #111111 100%)',
+        background: 'linear-gradient(180deg, #111 0%, #0a0a0a 100%)',
         border: '1px solid #222',
-        borderRadius: '16px',
+        borderRadius: '24px',
         overflow: 'hidden',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        boxShadow: '0 20px 50px rgba(227,27,109,0.1)',
       }}>
 
         {/* Header Area */}
         <div style={{
-          background: 'linear-gradient(135deg, #1a0510 0%, #2d0a1a 100%)',
-          padding: '32px 24px',
-          textAlign: 'center',
           position: 'relative',
+          height: '240px',
+          backgroundImage: 'url("https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.25.06.jpeg?raw=true")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center',
         }}>
-          {/* Logo / Icon */}
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🦑</div>
-          
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: 900,
-            color: '#E31B6D',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            margin: '0 0 8px 0',
-          }}>
-            SQUID GAME
-          </h1>
+          {/* Overlay to ensure text readability */}
           <div style={{
-            fontSize: '10px',
-            color: '#888',
-            letterSpacing: '0.2em',
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, #111 100%)',
+          }} />
+
+          {/* Logo / Icon */}
+          <img 
+            src="https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.30.25%20(1).png?raw=true" 
+            alt="Squid Game Logo" 
+            style={{ width: '220px', objectFit: 'contain', position: 'relative', zIndex: 5, marginBottom: '20px' }}
+          />
+
+          <div style={{
+            position: 'relative',
+            zIndex: 5,
+            fontSize: '11px',
+            color: '#ffc107',
+            letterSpacing: '0.25em',
             textTransform: 'uppercase',
+            fontWeight: 800,
+            marginTop: 'auto',
           }}>
             PARADOX26 · LIVE SCOREBOARD
           </div>
@@ -127,23 +156,55 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
 
         {/* Player Details Area */}
         <div style={{
-          padding: '32px 24px',
+          padding: '24px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           borderBottom: '1px solid #222',
+          position: 'relative',
         }}>
+          {/* Share Button */}
+          <button 
+            onClick={handleShare}
+            style={{
+              position: 'absolute',
+              top: '24px',
+              right: '24px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              padding: '8px 12px',
+              borderRadius: '100px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              transition: 'background 0.2s',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            Share
+          </button>
+
           {/* ID Badge */}
           <div style={{
-            padding: '6px 20px',
+            padding: '4px 16px',
             borderRadius: '100px',
-            background: 'rgba(227,27,109,0.1)',
-            border: '1px solid rgba(227,27,109,0.3)',
-            color: '#E31B6D',
+            background: 'var(--pink)',
+            color: '#fff',
             fontWeight: 900,
-            fontSize: '18px',
+            fontSize: '16px',
             letterSpacing: '0.15em',
-            marginBottom: '16px',
+            marginBottom: '12px',
+            boxShadow: '0 0 15px rgba(227,27,109,0.4)',
           }}>
             {participant.assigned_qr}
           </div>
@@ -159,10 +220,13 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
           }}>
             {participant.name}
           </h2>
+          <div style={{ color: '#888', fontSize: '13px', marginTop: '6px', fontFamily: 'monospace' }}>
+            {participant.roll_no}
+          </div>
         </div>
 
         {/* Rounds List */}
-        <div style={{ padding: '0' }}>
+        <div style={{ padding: '8px 0' }}>
           {rounds.map((round, i) => {
             const result = getResult(round.round_id)
             return (
@@ -173,9 +237,9 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
                 padding: '16px 24px',
                 borderBottom: i < rounds.length - 1 ? '1px solid #222' : 'none',
                 background: result === 'survived'
-                  ? 'linear-gradient(90deg, rgba(0,200,83,0.05) 0%, transparent 100%)'
+                  ? 'linear-gradient(90deg, rgba(0,200,83,0.08) 0%, transparent 100%)'
                   : result === 'eliminated'
-                  ? 'linear-gradient(90deg, rgba(229,57,53,0.05) 0%, transparent 100%)'
+                  ? 'linear-gradient(90deg, rgba(229,57,53,0.08) 0%, transparent 100%)'
                   : 'transparent',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -183,19 +247,19 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
                     width: '32px',
                     height: '32px',
                     borderRadius: '50%',
-                    background: '#1a1a1a',
-                    border: '1px solid #333',
+                    background: result === 'survived' ? 'rgba(0,200,83,0.1)' : result === 'eliminated' ? 'rgba(229,57,53,0.1)' : '#1a1a1a',
+                    border: `1px solid ${result === 'survived' ? '#00c853' : result === 'eliminated' ? '#e53935' : '#333'}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '14px',
                     fontWeight: 800,
-                    color: '#E31B6D',
+                    color: result === 'survived' ? '#00c853' : result === 'eliminated' ? '#e53935' : '#888',
                     flexShrink: 0,
                   }}>
                     {i + 1}
                   </div>
-                  <span style={{ fontSize: '15px', fontWeight: 600, color: '#eee' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: result ? '#fff' : '#aaa' }}>
                     {round.round_name}
                   </span>
                 </div>
@@ -203,22 +267,22 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
                 <div style={{
                   padding: '6px 14px',
                   borderRadius: '100px',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 800,
                   letterSpacing: '0.08em',
                   background: result === 'survived'
-                    ? 'rgba(0,200,83,0.12)'
+                    ? 'rgba(0,200,83,0.15)'
                     : result === 'eliminated'
-                    ? 'rgba(229,57,53,0.12)'
+                    ? 'rgba(229,57,53,0.15)'
                     : 'rgba(255,255,255,0.05)',
                   color: result === 'survived'
-                    ? '#00c853'
+                    ? '#00e676'
                     : result === 'eliminated'
                     ? '#ff5252'
                     : '#666',
                   border: `1px solid ${
-                    result === 'survived' ? 'rgba(0,200,83,0.3)' 
-                    : result === 'eliminated' ? 'rgba(229,57,53,0.3)' 
+                    result === 'survived' ? 'rgba(0,200,83,0.4)' 
+                    : result === 'eliminated' ? 'rgba(229,57,53,0.4)' 
                     : '#333'
                   }`,
                 }}>
@@ -234,11 +298,11 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
       
       {/* Footer text */}
       <div style={{
-        marginTop: '24px',
+        marginTop: '32px',
         textAlign: 'center',
         fontSize: '11px',
         color: '#555',
-        letterSpacing: '0.15em',
+        letterSpacing: '0.2em',
         textTransform: 'uppercase',
       }}>
         TRUST NO ONE · PLAY FAIR · WIN BIG
