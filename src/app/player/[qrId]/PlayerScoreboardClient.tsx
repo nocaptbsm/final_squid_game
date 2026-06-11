@@ -109,7 +109,7 @@ export default function PlayerScoreboardClient({ participant, rounds, initialRes
           <img 
             src="https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.30.25%20(1)-Photoroom.png?raw=true" 
             alt="Squid Game Logo" 
-            style={{ width: '220px', objectFit: 'contain', position: 'relative', zIndex: 5, marginBottom: '20px' }}
+            style={{ width: '220px', objectFit: 'contain', position: 'relative', zIndex: 5, marginBottom: '20px', background: 'white', padding: '12px', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}
           />
 
           <div style={{

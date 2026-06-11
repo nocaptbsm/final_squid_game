@@ -31,7 +31,7 @@ export default function UnregisteredCard({ qrId }: { qrId: string }) {
           <img 
             src="https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.30.25%20(1)-Photoroom.png?raw=true" 
             alt="Squid Game Logo" 
-            style={{ height: '56px', objectFit: 'contain', marginBottom: '12px' }}
+            style={{ height: '56px', objectFit: 'contain', marginBottom: '12px', background: 'white', padding: '8px', borderRadius: '8px' }}
           />
           <div style={{
             fontSize: 22,
