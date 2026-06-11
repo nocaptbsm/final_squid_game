@@ -127,7 +127,11 @@ export default function PlayerPageClient({ qrId }: { qrId: string }) {
           padding: '32px 24px 24px',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 52, marginBottom: 10 }}>🦑</div>
+          <img 
+            src="https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.30.25%20(1)-Photoroom.png?raw=true" 
+            alt="Squid Game Logo" 
+            style={{ height: '52px', objectFit: 'contain', marginBottom: '10px' }}
+          />
           <div style={{
             fontSize: 20, fontWeight: 900, color: '#E31B6D',
             letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4,
