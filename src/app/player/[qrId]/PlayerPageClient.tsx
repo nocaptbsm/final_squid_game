@@ -123,22 +123,30 @@ export default function PlayerPageClient({ qrId }: { qrId: string }) {
       }}>
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #1a0510 0%, #2d0a1a 100%)',
-          padding: '32px 24px 24px',
+          position: 'relative',
+          height: '220px',
+          backgroundImage: 'url("https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.25.06.jpeg?raw=true")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
           textAlign: 'center',
         }}>
+          {/* Overlay to ensure text readability */}
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, #111 100%)',
+          }} />
           <img 
             src="https://github.com/nocaptbsm/final_squid_game/blob/main/WhatsApp%20Image%202026-06-10%20at%2002.30.25%20(1)-Photoroom.png?raw=true" 
             alt="Squid Game Logo" 
-            style={{ height: '52px', objectFit: 'contain', marginBottom: '10px', background: 'white', padding: '6px', borderRadius: '8px' }}
+            style={{ width: '180px', objectFit: 'contain', marginBottom: '16px', background: 'white', padding: '10px', borderRadius: '12px', position: 'relative', zIndex: 5, boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}
           />
-          <div style={{
-            fontSize: 20, fontWeight: 900, color: '#E31B6D',
-            letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4,
-          }}>
-            SQUID GAME
-          </div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+          <div style={{ position: 'relative', zIndex: 5, fontSize: 11, color: '#ffc107', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
             PARADOX26 · THE GAME BEGINS
           </div>
         </div>
