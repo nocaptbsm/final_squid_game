@@ -19,6 +19,7 @@ export default function RoundScanPage() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [activeRound, setActiveRound] = useState<Round | null>(null)
   const [existingResult, setExistingResult] = useState<'survived' | 'eliminated' | null>(null)
+  const [lockedReason, setLockedReason] = useState<string>('{lockedReason}')
   const activeRoundRef = useRef<Round | null>(null)
 
   // Keep ref in sync so scanner callback can access latest round
@@ -72,12 +73,38 @@ export default function RoundScanPage() {
             // 2. Globally eliminated → locked forever
             if (p.current_status === 'eliminated') {
               beepError()
+              setLockedReason('This participant has been eliminated and cannot receive further results.')
               setState('locked')
               return
             }
 
-            // 3. Check if result already recorded for THIS round
+            // 2.5 Check if survived previous round
             const currentRound = activeRoundRef.current
+            if (currentRound && currentRound.round_order > 1) {
+              const { data: prevRound } = await supabase
+                .from('rounds')
+                .select('round_id')
+                .eq('round_order', currentRound.round_order - 1)
+                .single()
+              
+              if (prevRound) {
+                const { data: prevResult } = await supabase
+                  .from('round_results')
+                  .select('result')
+                  .eq('participant_id', p.participant_id)
+                  .eq('round_id', prevRound.round_id)
+                  .single()
+                  
+                if (!prevResult || prevResult.result !== 'survived') {
+                  beepError()
+                  setLockedReason('This participant did not survive (or did not participate in) the previous round.')
+                  setState('locked')
+                  return
+                }
+              }
+            }
+
+            // 3. Check if result already recorded for THIS round
             if (currentRound) {
               const { data: rr } = await supabase
                 .from('round_results')

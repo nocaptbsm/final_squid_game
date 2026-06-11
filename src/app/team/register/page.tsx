@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { beep, beepSuccess, beepWarning, beepError } from '@/lib/beep'
 
-type State = 'scanning' | 'already_registered' | 'entering_roll' | 'submitting' | 'success' | 'error'
+type State = 'scanning' | 'manual_entry' | 'already_registered' | 'entering_roll' | 'submitting' | 'success' | 'error'
 
 export default function RegisterPage() {
   const supabase = createClient()
@@ -159,6 +159,48 @@ export default function RegisterPage() {
             </button>
             <button type="button" className="btn btn-ghost" onClick={startScanner}>
               Rescan
+            </button>
+          </form>
+        </div>
+      )}
+
+      
+      {/* Manual Entry */}
+      {state === 'manual_entry' && (
+        <div className="card" style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700 }}>Manual Registration</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>Enter Player ID (e.g. SG26-001) and Roll Number</p>
+          </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group">
+              <label className="label">Player ID (QR Code)</label>
+              <input
+                className="input"
+                placeholder="e.g. SG26-001"
+                value={scannedQR}
+                onChange={e => setScannedQR(e.target.value.toUpperCase())}
+                autoFocus
+                required
+                style={{ fontSize: 18, textAlign: 'center', fontWeight: 700, letterSpacing: '0.1em' }}
+              />
+            </div>
+            <div className="form-group">
+              <label className="label">Roll Number</label>
+              <input
+                className="input"
+                placeholder="e.g. CS24B001"
+                value={rollNo}
+                onChange={e => setRollNo(e.target.value.toUpperCase())}
+                required
+                style={{ fontSize: 18, textAlign: 'center', fontWeight: 700, letterSpacing: '0.1em' }}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-lg">
+              Register Participant
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={startScanner}>
+              Cancel / Back to Camera
             </button>
           </form>
         </div>
