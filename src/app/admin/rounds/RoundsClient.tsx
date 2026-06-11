@@ -87,25 +87,76 @@ function GroupCard({ group }: { group: Group }) {
 // ─── Per-round group maker ────────────────────────────────────────────────────
 function RoundGroupMaker({ roundId, roundName }: { roundId: string; roundName: string }) {
   const supabase = createClient()
+  const [mode, setMode] = useState<'auto'|'manual'>('auto')
   const [groupSize, setGroupSize] = useState(4)
   const [groups, setGroups] = useState<Group[]>([])
   const [players, setPlayers] = useState<Player[]>([])
+  const [availablePlayers, setAvailablePlayers] = useState<Player[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
 
-  const generate = async () => {
-    if (groupSize < 2) { toast.error('Group size must be ≥ 2'); return }
-    setLoading(true); setDone(false)
+  const fetchPlayers = async () => {
+    setLoading(true)
     const { data, error } = await supabase
       .from('participants')
       .select('participant_id, name, roll_no, gender, assigned_qr')
       .eq('current_status', 'active')
       .order('roll_no')
-    if (error || !data?.length) { toast.error('No active players'); setLoading(false); return }
+    setLoading(false)
+    if (error || !data?.length) { toast.error('No active players'); return [] }
     setPlayers(data)
+    setAvailablePlayers(data)
+    return data
+  }
+
+  const generateAuto = async () => {
+    if (groupSize < 2) { toast.error('Group size must be ≥ 2'); return }
+    let data = players
+    if (!data.length) data = await fetchPlayers()
+    if (!data.length) return
+    
     setGroups(makeGroups(data, groupSize))
-    setDone(true); setLoading(false)
+    setDone(true)
     toast.success(`${makeGroups(data, groupSize).length} groups created`)
+  }
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+  }
+
+  const createManualGroup = () => {
+    if (selectedIds.size === 0) return
+    const members = availablePlayers.filter(p => selectedIds.has(p.participant_id))
+    const hasM = members.some(p => p.gender === 'M')
+    const hasF = members.some(p => p.gender === 'F')
+    const type = hasM && hasF ? 'mixed' : hasM ? 'male' : hasF ? 'female' : 'other'
+    
+    const newGroup: Group = { num: groups.length + 1, members, type }
+    setGroups([...groups, newGroup])
+    setAvailablePlayers(availablePlayers.filter(p => !selectedIds.has(p.participant_id)))
+    setSelectedIds(new Set())
+    setDone(true)
+  }
+
+  const resetManual = () => {
+    setGroups([])
+    setAvailablePlayers(players)
+    setSelectedIds(new Set())
+    setDone(groups.length > 0)
+  }
+
+  const switchMode = async (m: 'auto'|'manual') => {
+    setMode(m)
+    setGroups([])
+    setDone(false)
+    if (m === 'manual') {
+      if (!players.length) await fetchPlayers()
+      else setAvailablePlayers(players)
+    }
   }
 
   const printGroups = (gs: Group[], ps: Player[]) => {
@@ -141,7 +192,7 @@ h1{text-align:center;font-size:18px;margin-bottom:4px}.sub{text-align:center;col
 @media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
 <div class="np">Set margins to None · <button onclick="window.print()">🖨️ Print</button></div>
 <h1>PARADOX26 — ${roundName} · Groups</h1>
-<div class="sub">${gs.length} groups · ${ps.length} players (♂${males} ♀${females}) · ${groupSize} per group</div>
+<div class="sub">${gs.length} groups · ${ps.length} players (♂${males} ♀${females})</div>
 ${mG.length ? `<div class="st" style="background:#dbeafe;color:#1d4ed8">♂ Male Groups (${mG.length})</div><div class="grid">${mG.map(renderG).join('')}</div>` : ''}
 ${fG.length ? `<div class="st" style="background:#fce7f3;color:#be185d">♀ Female Groups (${fG.length})</div><div class="grid">${fG.map(renderG).join('')}</div>` : ''}
 ${xG.length ? `<div class="st" style="background:#ede9fe;color:#6d28d9">⚥ Mixed Groups (${xG.length})</div><div class="grid">${xG.map(renderG).join('')}</div>` : ''}
@@ -161,29 +212,62 @@ ${xG.length ? `<div class="st" style="background:#ede9fe;color:#6d28d9">⚥ Mixe
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>Group Maker</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Gender-first grouping of active players</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Create subgroups for the next round</div>
         </div>
-        {done && <button className="btn btn-ghost btn-sm" onClick={() => printGroups(groups, players)} id={`print-groups-${roundId}`}>🖨️ Print Groups</button>}
+        {done && <button className="btn btn-ghost btn-sm" onClick={() => printGroups(groups, mode === 'auto' ? players : groups.flatMap(g => g.members))} id={`print-groups-${roundId}`}>🖨️ Print Groups</button>}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: done ? 14 : 0 }}>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="label" style={{ fontSize: 11 }}>Players per group</label>
-          <input id={`gs-${roundId}`} type="number" className="input" value={groupSize} min={2} max={50}
-            onChange={e => { setGroupSize(Number(e.target.value)); setDone(false) }} style={{ width: 100 }} />
-        </div>
-        <button className="btn btn-primary btn-sm" onClick={generate} disabled={loading} id={`gen-${roundId}`}>
-          {loading ? <><span className="spinner" style={{ width: 14, height: 14, display: 'inline-block' }} /> Generating…</> : '⚡ Generate Groups'}
-        </button>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <button className={`btn btn-sm ${mode === 'auto' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => switchMode('auto')}>Automatic</button>
+        <button className={`btn btn-sm ${mode === 'manual' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => switchMode('manual')}>Manual Selection</button>
       </div>
+
+      {mode === 'auto' ? (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: done ? 14 : 0 }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="label" style={{ fontSize: 11 }}>Players per group</label>
+            <input id={`gs-${roundId}`} type="number" className="input" value={groupSize} min={2} max={50}
+              onChange={e => { setGroupSize(Number(e.target.value)); setDone(false) }} style={{ width: 100 }} />
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={generateAuto} disabled={loading}>
+            {loading ? <><span className="spinner" style={{ width: 14, height: 14, display: 'inline-block' }} /> Generating…</> : '⚡ Generate Groups'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, background: 'var(--bg-secondary)', marginBottom: done ? 14 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Select participants for Group {groups.length + 1}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost btn-sm" onClick={resetManual}>Reset All</button>
+              <button className="btn btn-primary btn-sm" onClick={createManualGroup} disabled={selectedIds.size === 0}>
+                Create Group ({selectedIds.size})
+              </button>
+            </div>
+          </div>
+          
+          <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-card)' }}>
+            {availablePlayers.length === 0 ? (
+              <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No players available</div>
+            ) : (
+              availablePlayers.map(p => (
+                <div key={p.participant_id} onClick={() => toggleSelect(p.participant_id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', cursor: 'pointer',
+                  borderBottom: '1px solid var(--border)', background: selectedIds.has(p.participant_id) ? 'rgba(255,45,120,0.1)' : 'transparent'
+                }}>
+                  <input type="checkbox" checked={selectedIds.has(p.participant_id)} readOnly style={{ accentColor: 'var(--pink)' }} />
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{p.name} <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 8 }}>{p.roll_no}</span></div>
+                  <span style={{ fontSize: 10, padding: '2px 6px', background: 'var(--bg-secondary)', borderRadius: 100 }}>{p.gender}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {done && groups.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 }}>
           {/* Stats */}
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted)' }}>
-            <span>👥 {players.length} active players</span>
-            <span style={{ color: '#63b3ed' }}>♂ {players.filter(p => p.gender === 'M').length}</span>
-            <span style={{ color: 'var(--pink)' }}>♀ {players.filter(p => p.gender === 'F').length}</span>
             <span style={{ marginLeft: 'auto', fontWeight: 700 }}>
               {groups.length} groups
               {maleG.length > 0 && <span style={{ color: '#63b3ed', marginLeft: 8 }}>♂{maleG.length}</span>}
