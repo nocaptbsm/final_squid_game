@@ -88,6 +88,7 @@ function GroupCard({ group }: { group: Group }) {
 function RoundGroupMaker({ roundId, roundName }: { roundId: string; roundName: string }) {
   const supabase = createClient()
   const [mode, setMode] = useState<'auto'|'manual'>('auto')
+  const [searchQuery, setSearchQuery] = useState('')
   const [groupSize, setGroupSize] = useState(4)
   const [groups, setGroups] = useState<Group[]>([])
   const [players, setPlayers] = useState<Player[]>([])
@@ -143,6 +144,7 @@ function RoundGroupMaker({ roundId, roundName }: { roundId: string; roundName: s
   }
 
   const resetManual = () => {
+    setSearchQuery('')
     setGroups([])
     setAvailablePlayers(players)
     setSelectedIds(new Set())
@@ -150,6 +152,7 @@ function RoundGroupMaker({ roundId, roundName }: { roundId: string; roundName: s
   }
 
   const switchMode = async (m: 'auto'|'manual') => {
+    setSearchQuery('')
     setMode(m)
     setGroups([])
     setDone(false)
@@ -235,9 +238,18 @@ ${xG.length ? `<div class="st" style="background:#ede9fe;color:#6d28d9">⚥ Mixe
         </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, background: 'var(--bg-secondary)', marginBottom: done ? 14 : 0 }}>
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>Select participants for Group {groups.length + 1}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input 
+                type="text" 
+                className="input" 
+                placeholder="Search name, roll, or QR..." 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+                style={{ height: 28, fontSize: 12, width: 200 }}
+              />
               <button className="btn btn-ghost btn-sm" onClick={resetManual}>Reset All</button>
               <button className="btn btn-primary btn-sm" onClick={createManualGroup} disabled={selectedIds.size === 0}>
                 Create Group ({selectedIds.size})
@@ -248,8 +260,18 @@ ${xG.length ? `<div class="st" style="background:#ede9fe;color:#6d28d9">⚥ Mixe
           <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-card)' }}>
             {availablePlayers.length === 0 ? (
               <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No players available</div>
+            ) : availablePlayers.filter(p => 
+              p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              p.roll_no.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              (p.assigned_qr && p.assigned_qr.toLowerCase().includes(searchQuery.toLowerCase()))
+            ).length === 0 ? (
+              <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No players available</div>
             ) : (
-              availablePlayers.map(p => (
+              availablePlayers.filter(p => 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                p.roll_no.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (p.assigned_qr && p.assigned_qr.toLowerCase().includes(searchQuery.toLowerCase()))
+              ).map(p => (
                 <div key={p.participant_id} onClick={() => toggleSelect(p.participant_id)} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', cursor: 'pointer',
                   borderBottom: '1px solid var(--border)', background: selectedIds.has(p.participant_id) ? 'rgba(255,45,120,0.1)' : 'transparent'
